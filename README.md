@@ -9,3 +9,5 @@ Nginx ("engine x") 是一个高性能的 HTTP 和 反向代理 服务器�
 ## 学习前提
 
 学习本教程前，我们假定您已经能够搭 Nginx 服务器，并能够进行简单常规的操作。
+
+鸣谢：[淘宝核心系统服务器平台组成员](http://tengine.taobao.org/book/index.html)
