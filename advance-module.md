@@ -11,14 +11,13 @@
 对应的变量结构体是这样子(每一个变量都是一个ngx_http_variable_s结构体)的：
 
 ```
-
-                struct ngx_http_variable_s {
-                    ngx_str_t                     name;   /* must be first to build the hash */
-                    ngx_http_set_variable_pt      set_handler;
-                    ngx_http_get_variable_pt      get_handler;
-                    uintptr_t                     data;
-                    ngx_uint_t                    flags;
-                    ngx_uint_t                    index;
+struct ngx_http_variable_s {
+ngx_str_t                     name;   /* must be first to build the hash */
+ngx_http_set_variable_pt      set_handler;
+ngx_http_get_variable_pt      get_handler;
+uintptr_t                     data;
+ngx_uint_t                    flags;
+ngx_uint_t                    index;
                 };
 ```
 
@@ -27,11 +26,10 @@
 这里要注意flag属性,flag属性就是由下面的几个属性组合而成:
 
 ```
-
-                #define NGX_HTTP_VAR_CHANGEABLE   1
-                #define NGX_HTTP_VAR_NOCACHEABLE  2
-                #define NGX_HTTP_VAR_INDEXED      4
-                #define NGX_HTTP_VAR_NOHASH       8
+#define NGX_HTTP_VAR_CHANGEABLE   1
+#define NGX_HTTP_VAR_NOCACHEABLE  2
+#define NGX_HTTP_VAR_INDEXED      4
+#define NGX_HTTP_VAR_NOHASH       8
 ```
 
 1. NGX_HTTP_VAR_CHANGEABLE表示这个变量是可变的.Nginx有很多内置变量是不可变的，比如arg_xxx这类变量，如果你使用set指令来修改，那么Nginx就会报错.
@@ -54,61 +52,55 @@
 在Nginx中提供了下面的接口，可以供模块调用来创建变量。
 
 ```
-
-                ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags);
+ngx_http_variable_t *ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags);
 ```
 
 这个函数所做的工作就是将变量 "name"添加进全局的hash key表中,然后初始化一些域，不过这里要注意，对应的变量的get/set回调，需要当这个函数返回之后，显式的设置,比如在split_clients模块中的例子:
 
 ```
-
-                var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
-                if (var == NULL) {
-                        return NGX_CONF_ERROR;
+var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+   if (var == NULL) {
+        return NGX_CONF_ERROR;
                 }
-                //设置回调
-                var->get_handler = ngx_http_split_clients_variable;
-                var->data = (uintptr_t) ctx;
+          //设置回调
+    var->get_handler = ngx_http_split_clients_variable;
+    var->data = (uintptr_t) ctx;
 ```
 
 而对应的回调函数原型是这样的:
 
 ```
-
-                typedef void (*ngx_http_set_variable_pt) (ngx_http_request_t *r,
-                    ngx_http_variable_value_t *v, uintptr_t data);
-                typedef ngx_int_t (*ngx_http_get_variable_pt) (ngx_http_request_t *r,
-                    ngx_http_variable_value_t *v, uintptr_t data);
+typedef void (*ngx_http_set_variable_pt) (ngx_http_request_t *r,
+       ngx_http_variable_value_t *v, uintptr_t data);
+typedef ngx_int_t (*ngx_http_get_variable_pt) (ngx_http_request_t *r,
+       ngx_http_variable_value_t *v, uintptr_t data);
 ```
 
 回调函数比较简单，第一个参数是当前请求，第二个是需要设置或者获取的变量值，第三个是初始化时的回调指针，这里我们着重来看一下ngx_http_variable_value_t,下面就是这个结构体的原型:
 
 ```
-
-                typedef struct {
-                    unsigned    len:28;
-
-                    unsigned    valid:1;
-                    unsigned    no_cacheable:1;
-                    unsigned    not_found:1;
-                    unsigned    escape:1;
-                    u_char     *data;
+typedef struct {
+    unsigned    len:28;
+    unsigned    valid:1;
+    unsigned    no_cacheable:1;
+    unsigned    not_found:1;
+    unsigned    escape:1;
+    u_char     *data;
                 } ngx_variable_value_t;
 ```
 
 这里主要是data域，当我们在get_handle中设置变量值的时候，只需要将对应的值放入到data中就可以了，这里data需要在get_handle中分配内存,比如下面的例子(ngx_http_fastcgi_script_name_variable),就是fastcgi_script_name变量的get_handler代码片段:
 
 ```
+ v->len = f->script_name.len + flcf->index.len;
 
-                v->len = f->script_name.len + flcf->index.len;
-
-                v->data = ngx_pnalloc(r->pool, v->len);
-                if (v->data == NULL) {
-                        return NGX_ERROR;
+ v->data = ngx_pnalloc(r->pool, v->len);
+    if (v->data == NULL) {
+       return NGX_ERROR;
                 }
 
-                p = ngx_copy(v->data, f->script_name.data, f->script_name.len);
-                ngx_memcpy(p, flcf->index.data, flcf->index.len);
+      p = ngx_copy(v->data, f->script_name.data, f->script_name.len);
+      ngx_memcpy(p, flcf->index.data, flcf->index.len);
 ```
 
 
@@ -120,13 +112,12 @@ Nginx的内部变量指的就是Nginx的官方模块中所导出的变量，在N
 假设我们需要在配置文件中使用http模块的host变量，那么只需要这样在变量名前加一个$符号就可以了($host).而如果需要在模块中使用host变量，那么就比较麻烦，Nginx提供了下面几个接口来取得变量:
 
 ```
-
-                ngx_http_variable_value_t *ngx_http_get_indexed_variable(ngx_http_request_t *r,
-                    ngx_uint_t index);
-                ngx_http_variable_value_t *ngx_http_get_flushed_variable(ngx_http_request_t *r,
-                    ngx_uint_t index);
-                ngx_http_variable_value_t *ngx_http_get_variable(ngx_http_request_t *r,
-                    ngx_str_t *name, ngx_uint_t key);
+ngx_http_variable_value_t *ngx_http_get_indexed_variable(ngx_http_request_t *r,
+        ngx_uint_t index);
+ngx_http_variable_value_t *ngx_http_get_flushed_variable(ngx_http_request_t *r,
+        ngx_uint_t index);
+ngx_http_variable_value_t *ngx_http_get_variable(ngx_http_request_t *r,
+        ngx_str_t *name, ngx_uint_t key);
 ```
 
 他们的区别是这样子的，ngx_http_get_indexed_variable和ngx_http_get_flushed_variable都是用来取得有索引的变量，不过他们的区别是后一个会处理
@@ -135,8 +126,7 @@ NGX_HTTP_VAR_NOCACHEABLE这个标记，也就是说如果你想要cache你的变
 通过上面我们知道可以通过索引来得到变量值，可是这个索引该如何取得呢，Nginx也提供了对应的接口：
 
 ```
-
-                ngx_int_t ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name);
+ngx_int_t ngx_http_get_variable_index(ngx_conf_t *cf, ngx_str_t *name);
 ```
 
 通过这个接口，就可以取得对应变量名的索引值。
@@ -144,49 +134,47 @@ NGX_HTTP_VAR_NOCACHEABLE这个标记，也就是说如果你想要cache你的变
 接下来来看对应的例子，比如在http_log模块中，如果在log_format中配置了对应的变量，那么它会调用ngx_http_get_variable_index来保存索引:
 
 ```
-
-                static ngx_int_t
-                ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
-                    ngx_str_t *value)
-                {
-                    ngx_int_t  index;
-                    //得到变量的索引
-                    index = ngx_http_get_variable_index(cf, value);
-                    if (index == NGX_ERROR) {
-                        return NGX_ERROR;
+static ngx_int_t
+      ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
+          ngx_str_t *value)
+             {
+                 ngx_int_t  index;
+                //得到变量的索引
+                index = ngx_http_get_variable_index(cf, value);
+                if (index == NGX_ERROR) {
+                     return NGX_ERROR;
                     }
 
-                    op->len = 0;
-                    op->getlen = ngx_http_log_variable_getlen;
-                    op->run = ngx_http_log_variable;
-                    //保存索引值
-                    op->data = index;
+                 op->len = 0;
+                op->getlen = ngx_http_log_variable_getlen;
+                op->run = ngx_http_log_variable;
+                 //保存索引值
+                 op->data = index;
 
-                    return NGX_OK;
+                return NGX_OK;
                  }
 ```
 
 然后http_log模块会使用ngx_http_get_indexed_variable来得到对应的变量值,这里要注意，就是使用这个接口的时候，判断返回值，不仅要判断是否为空，也需要判断value->not_found,这是因为只有第一次调用才会返回空，后续返回就不是空，因此需要判断value->not_found:
 
 ```
+static u_char *
+     ngx_http_log_variable(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
+         {
+            ngx_http_variable_value_t  *value;
+             //获取变量值
+             value = ngx_http_get_indexed_variable(r, op->data);
 
-                static u_char *
-                ngx_http_log_variable(ngx_http_request_t *r, u_char *buf, ngx_http_log_op_t *op)
-                {
-                    ngx_http_variable_value_t  *value;
-                    //获取变量值
-                    value = ngx_http_get_indexed_variable(r, op->data);
-
-                    if (value == NULL || value->not_found) {
-                            *buf = '-';
-                            return buf + 1;
+             if (value == NULL || value->not_found) {
+                 *buf = '-';
+               return buf + 1;
                     }
 
-                    if (value->escape == 0) {
-                            return ngx_cpymem(buf, value->data, value->len);
+             if (value->escape == 0) {
+                return ngx_cpymem(buf, value->data, value->len);
 
-                    } else {
-                            return (u_char *) ngx_http_log_escape(buf, value->data, value->len);
+                   } else {
+                return (u_char *) ngx_http_log_escape(buf, value->data, value->len);
                     }
                  }
 ```
