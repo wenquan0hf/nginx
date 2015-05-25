@@ -1,11 +1,8 @@
-过滤模块 
-======================
+# 过滤模块 
 
-过滤模块简介 
-------------------------
+## 过滤模块简介 
 
-执行时间和内容 
-+++++++++++++++++++++++++++
+### 执行时间和内容 
 
 过滤（filter）模块是过滤响应头和内容的模块，可以对回复的头和内容进行处理。它的处理时间在获取回复内容之后，向用户发送响应之前。它的处理过程分为两个阶段，过滤HTTP回复的头部和主体，在这两个阶段可以分别对头部和主体进行修改。
 
@@ -19,8 +16,8 @@
 就是分别对头部和主体进行过滤的函数。所有模块的响应内容要返回给客户端，都必须调用这两个接口。
 
 
-执行顺序 
-+++++++++++++++++++++
+### 执行顺序 
+
 
 过滤模块的调用是有顺序的，它的顺序在编译的时候就决定了。控制编译的脚本位于auto/modules中，当你编译完Nginx以后，可以在objs目录下面看到一个ngx_modules.c的文件。打开这个文件，有类似的代码：
 
@@ -73,8 +70,7 @@ ngx_http_top_header_filter是一个全局变量。当编译进一个filter模块
 
 这图只表示了head_filter和body_filter之间的执行顺序，在header_filter和body_filter处理函数之间，在body_filter处理函数之间，可能还有其他执行代码。
 
-模块编译 
-++++++++++++++++++++
+### 模块编译 
 
 Nginx可以方便的加入第三方的过滤模块。在过滤模块的目录里，首先需要加入config文件，文件的内容如下：
 
@@ -90,12 +86,10 @@ Nginx可以方便的加入第三方的过滤模块。在过滤模块的目录里
 
 注意HTTP_AUX_FILTER_MODULES这个变量与一般的内容处理模块不同。
 
+## 过滤模块的分析 
 
-过滤模块的分析 
---------------------------
+### 相关结构体 
 
-相关结构体 
-+++++++++++++++++++++
 ngx_chain_t 结构非常简单，是一个单向链表：
 
 ```      
@@ -168,8 +162,7 @@ ngx_chain_t 结构非常简单，是一个单向链表：
 ![](images/chapter-4-2.png)
 
 
-响应头过滤函数 
-+++++++++++++++++++++++++
+### 响应头过滤函数 
 
 响应头过滤函数主要的用处就是处理HTTP响应的头，可以根据实际情况对于响应头进行修改或者添加删除。响应头过滤函数先于响应体过滤函数，而且只调用一次，所以一般可作过滤模块的初始化工作。
 
@@ -192,27 +185,23 @@ ngx_chain_t 结构非常简单，是一个单向链表：
 
 按照前一节过滤模块的顺序，依次讲解如下：
 
-=====================================  ================================================================================================================= 
-filter module                           description
-=====================================  =================================================================================================================
-ngx_http_not_modified_filter_module    默认打开，如果请求的if-modified-since等于回复的last-modified间值，说明回复没有变化，清空所有回复的内容，返回304。
-ngx_http_range_body_filter_module      默认打开，只是响应体过滤函数，支持range功能，如果请求包含range请求，那就只发送range请求的一段内容。
-ngx_http_copy_filter_module            始终打开，只是响应体过滤函数， 主要工作是把文件中内容读到内存中，以便进行处理。
-ngx_http_headers_filter_module         始终打开，可以设置expire和Cache-control头，可以添加任意名称的头
-ngx_http_userid_filter_module          默认关闭，可以添加统计用的识别用户的cookie。
-ngx_http_charset_filter_module         默认关闭，可以添加charset，也可以将内容从一种字符集转换到另外一种字符集，不支持多字节字符集。
-ngx_http_ssi_filter_module             默认关闭，过滤SSI请求，可以发起子请求，去获取include进来的文件
-ngx_http_postpone_filter_module        始终打开，用来将子请求和主请求的输出链合并
-ngx_http_gzip_filter_module            默认关闭，支持流式的压缩内容
-ngx_http_range_header_filter_module    默认打开，只是响应头过滤函数，用来解析range头，并产生range响应的头。
-ngx_http_chunked_filter_module         默认打开，对于HTTP/1.1和缺少content-length的回复自动打开。
-ngx_http_header_filter_module          始终打开，用来将所有header组成一个完整的HTTP头。
-ngx_http_write_filter_module           始终打开，将输出链拷贝到r->out中，然后输出内容。
-=====================================  ================================================================================================================= 
+|filter module     |                      description|
+|:----|:--------|
+|ngx_http_not_modified_filter_module |   默认打开，如果请求的if-modified-since等于回复的last-modified间值，说明回复没有变化，清空所有回复的内容，返回304。|
+|ngx_http_range_body_filter_module  |    默认打开，只是响应体过滤函数，支持range功能，如果请求包含range请求，那就只发送range请求的一段内容。|
+|ngx_http_copy_filter_module        |    始终打开，只是响应体过滤函数， 主要工作是把文件中内容读到内存中，以便进行处理。|
+|ngx_http_headers_filter_module  |       始终打开，可以设置expire和Cache-control头，可以添加任意名称的头|
+|ngx_http_userid_filter_module   |       默认关闭，可以添加统计用的识别用户的cookie。|
+|ngx_http_charset_filter_module     |    默认关闭，可以添加charset，也可以将内容从一种字符集转换到另外一种字符集，不支持多字节字符集。|
+|ngx_http_ssi_filter_module       |      默认关闭，过滤SSI请求，可以发起子请求，去获取include进来的文件|
+|ngx_http_postpone_filter_module    |    始终打开，用来将子请求和主请求的输出链合并|
+|ngx_http_gzip_filter_module   |         默认关闭，支持流式的压缩内容|
+|ngx_http_range_header_filter_module|    默认打开，只是响应头过滤函数，用来解析range头，并产生range响应的头。|
+|ngx_http_chunked_filter_module |        默认打开，对于HTTP/1.1和缺少content-length的回复自动打开。|
+|ngx_http_header_filter_module |         始终打开，用来将所有header组成一个完整的HTTP头。|
+|ngx_http_write_filter_module |          始终打开，将输出链拷贝到r->out中，然后输出内容。|
 
-
-响应体过滤函数 
-++++++++++++++++++++++++++
+### 响应体过滤函数 
 
 响应体过滤函数是过滤响应主体的函数。ngx_http_top_body_filter这个函数每个请求可能会被执行多次，它的入口函数是ngx_http_output_filter，比如：
 
@@ -254,8 +243,7 @@ ngx_http_output_filter可以被一般的静态处理模块调用，也有可能�
 
 该函数的返回值一般是NGX_OK，NGX_ERROR和NGX_AGAIN，分别表示处理成功，失败和未完成。
         
-主要功能介绍 
-^^^^^^^^^^^^^^^^^^^^^^^	
+## 主要功能介绍 
 
 响应的主体内容就存于单链表in，链表一般不会太长，有时in参数可能为NULL。in中存有buf结构体中，对于静态文件，这个buf大小默认是32K；对于反向代理的应用，这个buf可能是4k或者8k。为了保持内存的低消耗，Nginx一般不会分配过大的内存，处理的原则是收到一定的数据，就发送出去。一个简单的例子，可以看看Nginx的chunked_filter模块，在没有content-length的情况下，chunk模块可以流式（stream）的加上长度，方便浏览器接收和显示内容。
 
@@ -264,8 +252,7 @@ ngx_http_output_filter可以被一般的静态处理模块调用，也有可能�
 当所有的过滤模块都处理完毕时，在最后的write_fitler模块中，Nginx会将in输出链拷贝到r->out输出链的末尾，然后调用sendfile或者writev接口输出。由于Nginx是非阻塞的socket接口，写操作并不一定会成功，可能会有部分数据还残存在r->out。在下次的调用中，Nginx会继续尝试发送，直至成功。
 
 
-发出子请求 
-^^^^^^^^^^^^^^^^^^^^^
+## 发出子请求 
 
 Nginx过滤模块一大特色就是可以发出子请求，也就是在过滤响应内容的时候，你可以发送新的请求，Nginx会根据你调用的先后顺序，将多个回复的内容拼接成正常的响应主体。一个简单的例子可以参考addition模块。
 
@@ -274,8 +261,7 @@ Nginx是如何保证父请求和子请求的顺序呢？当Nginx发出子请求�
 关键点是在postpone_filter模块中，它会拼接主请求和子请求的响应内容。r->postponed按次序保存有父请求和子请求，它是一个链表，如果前面一个请求未完成，那后一个请求内容就不会输出。当前一个请求完成时并输出时，后一个请求才可输出，当所有的子请求都完成时，所有的响应内容也就输出完毕了。
 
 
-一些优化措施 
-^^^^^^^^^^^^^^^^^^^^^^
+## 一些优化措施 
 
 Nginx过滤模块涉及到的结构体，主要就是chain和buf，非常简单。在日常的过滤模块中，这两类结构使用非常频繁，Nginx采用类似freelist重复利用的原则，将使用完毕的chain或者buf结构体，放置到一个固定的空闲链表里，以待下次使用。
 
@@ -290,9 +276,7 @@ buf分配     ngx_chain_get_free_buf
 buf释放     ngx_chain_update_chains
 ==========  ========================
 
-
-过滤内容的缓存 
-^^^^^^^^^^^^^^^^^^^^^^^^^
+## 过滤内容的缓存 
 
 由于Nginx设计流式的输出结构，当我们需要对响应内容作全文过滤的时候，必须缓存部分的buf内容。该类过滤模块往往比较复杂，比如sub，ssi，gzip等模块。这类模块的设计非常灵活，我简单讲一下设计原则：
 
