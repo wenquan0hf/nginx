@@ -11,9 +11,7 @@ nginx在启动后，在unix系统中会以daemon的方式在后台运行，后�
 
 刚才讲到，nginx在启动后，会有一个master进程和多个worker进程。master进程主要用来管理worker进程，包含：接收来自外界的信号，向各worker进程发送信号，监控worker进程的运行状态，当worker进程退出后(异常情况下)，会自动重新启动新的worker进程。而基本的网络事件，则是放在worker进程中来处理了。多个worker进程之间是对等的，他们同等竞争来自客户端的请求，各进程互相之间是独立的。一个请求，只可能在一个worker进程中处理，一个worker进程，不可能处理其它进程的请求。worker进程的个数是可以设置的，一般我们会设置与机器cpu核数一致，这里面的原因与nginx的进程模型以及事件处理模型是分不开的。nginx的进程模型，可以由下图来表示：
 
-.. image:: http://tengine.taobao.org/book/_images/chapter-2-1.PNG
-    :alt: nginx进程模型
-    :align: center
+![](images/chapter-2-1.PNG)
 
 在nginx启动后，如果我们要操作nginx，要怎么做呢？从上文中我们可以看到，master来管理worker进程，所以我们只需要与master进程通信就行了。master进程会接收来自外界发来的信号，再根据信号做不同的事情。所以我们要控制nginx，只需要通过kill向master进程发送信号就行了。比如kill -HUP pid，则是告诉nginx，从容地重启nginx，我们一般用这个信号来重启nginx，或重新加载配置，因为是从容地重启，因此服务是不中断的。master进程在接收到HUP信号后是怎么做的呢？首先master进程在接到信号后，会先重新加载配置文件，然后再启动新的worker进程，并向所有老的worker进程发送信号，告诉他们可以光荣退休了。新的worker在启动后，就开始接收新的请求，而老的worker在收到来自master的信号后，就不再接收新的请求，并且在当前进程中的所有未处理完的请求处理完成后，再退出。当然，直接给master进程发送信号，这是比较老的操作方式，nginx在0.8版本之后，引入了一系列命令行参数，来方便我们管理。比如，./nginx -s reload，就是来重启nginx，./nginx -s stop，就是来停止nginx的运行。如何做到的呢？我们还是拿reload来说，我们看到，执行命令时，我们是启动一个新的nginx进程，而新的nginx进程在解析到reload参数后，就知道我们的目的是控制nginx来重新加载配置文件了，它会向master进程发送信号，然后接下来的动作，就和我们直接向master进程发送信号一样了。
 
@@ -131,9 +129,7 @@ http请求是典型的请求-响应类型的的网络协议，而http是文本�
 
 处理流程图：
 
-.. image:: http://tengine.taobao.org/book/_images/chapter-2-2.PNG
-    :alt: 请求处理流程
-    :align: center
+![](images/chapter-2-2.PNG)
 
 以上这些，就是nginx中一个http请求的生命周期了。我们再看看与请求相关的一些概念吧。
 
@@ -692,14 +688,9 @@ nginx为了处理带有通配符的域名的匹配问题，实现了ngx_hash_wil
 
 该函数执行成功返回NGX_OK，否则NGX_ERROR。
 
-
-
-
 .. code:: c
 
     void *ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len);
-
-
 
 该函数查询包含通配符在前的key的hash表的。
 
@@ -800,9 +791,6 @@ ngx_hash_keys_arrays_t
 
 :dns_wc_tail_hash: 该值在调用的过程中用来保存和检测是否有冲突的后向通配符的key值，也就是是否有重复。
 
-
-
-
 在定义一个这个类型的变量，并对字段pool和temp_pool赋值以后，就可以调用函数ngx_hash_add_key把所有的key加入到这个结构中了，该函数会自动实现普通key，带前向通配符的key和带后向通配符的key的分类和检查，并将这个些值存放到对应的字段中去，
 然后就可以通过检查这个结构体中的keys、dns_wc_head、dns_wc_tail三个数组是否为空，来决定是否构建普通hash表，前向通配符hash表和后向通配符hash表了（在构建这三个类型的hash表的时候，可以分别使用keys、dns_wc_head、dns_wc_tail三个数组）。
 
@@ -841,8 +829,6 @@ ngx_hash_keys_arrays_t
 ngx_chain_t
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-
 nginx的filter模块在处理从别的filter模块或者是handler模块传递过来的数据（实际上就是需要发送给客户端的http response）。这个传递过来的数据是以一个链表的形式(ngx_chain_t)。而且数据可能被分多次传递过来。也就是多次调用filter的处理函数，以不同的ngx_chain_t。
 
 该结构被定义在src/core/ngx_buf.h|c。下面我们来看一下ngx_chain_t的定义。
@@ -875,13 +861,8 @@ nginx的filter模块在处理从别的filter模块或者是handler模块传递�
 
 **注意\:** 对ngx_chaint_t类型的释放，并不是真的释放了内存，而仅仅是把这个对象挂在了这个pool对象的一个叫做chain的字段对应的chain上，以供下次从这个pool上分配ngx_chain_t类型对象的时候，快速的从这个pool->chain上取下链首元素就返回了，当然，如果这个链是空的，才会真的在这个pool上使用ngx_palloc函数进行分配。 
 
-
-
-
 ngx_buf_t
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
 
 这个ngx_buf_t就是这个ngx_chain_t链表的每个节点的实际数据。该结构实际上是一种抽象的数据结构，它代表某种具体的数据。这个数据可能是指向内存中的某个缓冲区，也可能指向一个文件的某一部分，也可能是一些纯元数据（元数据的作用在于指示这个链表的读取者对读取的数据进行不同的处理）。
 
@@ -997,7 +978,6 @@ ngx_buf_t
 :size: 该buf使用的内存的大小。
 
 
-
 为了配合对ngx_buf_t的使用，nginx定义了以下的宏方便操作。
 
 .. code:: c
@@ -1036,10 +1016,6 @@ ngx_buf_t
 
 
 返回该buf所含数据的大小，不管这个数据是在文件里还是在内存里。
-
-
-
-
 
 ngx_list_t 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1120,10 +1096,6 @@ ngx_list_t顾名思义，看起来好像是一个list的数据结构。这样的
 那么什么时候会出现已经有了ngx_list_t类型的对象，而其首节点存放元素的内存尚未分配的情况呢？那就是这个ngx_list_t类型的变量并不是通过调用ngx_list_create函数创建的。例如：如果某个结构体的一个成员变量是ngx_list_t类型的，那么当这个结构体类型的对象被创建出来的时候，这个成员变量也被创建出来了，但是它的首节点的存放元素的内存并未被分配。
 
 总之，如果这个ngx_list_t类型的变量，如果不是你通过调用函数ngx_list_create创建的，那么就必须调用此函数去初始化，否则，你往这个list里追加元素就可能引发不可预知的行为，亦或程序会崩溃!
-
-
-
-
 
 ngx_queue_t
 ~~~~~~~~~~~~~~~~~~~
@@ -1228,9 +1200,6 @@ ngx_queue_insert_head()和ngx_queue_insert_after()都是往头部添加节点，
 另外nginx也提供了ngx_queue_remove()宏来从链表中删除一个数据节点，以及ngx_queue_add()用来将一个链表添加到另一个链表。
 
 
-
-
-
 nginx的配置系统
 ------------------------
 
@@ -1241,9 +1210,6 @@ nginx的配置系统由一个主配置文件和其他一些辅助的配置文件
 由于除主配置文件nginx.conf以外的文件都是在某些情况下才使用的，而只有主配置文件是在任何情况下都被使用的。所以在这里我们就以主配置文件为例，来解释nginx的配置系统。
 
 在nginx.conf中，包含若干配置项。每个配置项由配置指令和指令参数2个部分构成。指令参数也就是配置指令对应的配置值。
-
-
-
 
 
 指令概述
@@ -1436,8 +1402,6 @@ worker进程中，ngx_worker_process_cycle()函数就是这个无限循环的处
 #) 产生响应，并发送回客户端。
 #) 完成request的处理。
 #) 重新初始化定时器及其他事件。
-
-
 
 请求的处理流程
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
