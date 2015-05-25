@@ -1384,9 +1384,6 @@ nginx的模块根据其功能基本上可以分为以下几种类型：
 :load-balancer: 负载均衡模块，实现特定的算法，在众多的后端服务器中，选择一个服务器出来作为某个请求的转发服务器。
 
 
-
-
-
 nginx的请求处理
 ------------------------
 
@@ -1396,12 +1393,12 @@ nginx使用一个多进程模型来对外提供服务，其中一个master进程
 
 worker进程中，ngx_worker_process_cycle()函数就是这个无限循环的处理函数。在这个函数中，一个请求的简单处理流程如下：
 
-#) 操作系统提供的机制（例如epoll, kqueue等）产生相关的事件。
-#) 接收和处理这些事件，如是接受到数据，则产生更高层的request对象。
-#) 处理request的header和body。
-#) 产生响应，并发送回客户端。
-#) 完成request的处理。
-#) 重新初始化定时器及其他事件。
+- 操作系统提供的机制（例如epoll, kqueue等）产生相关的事件。
+- 接收和处理这些事件，如是接受到数据，则产生更高层的request对象。
+- 处理request的header和body。
+- 产生响应，并发送回客户端。
+- 完成request的处理。
+- 重新初始化定时器及其他事件。
 
 请求的处理流程
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1410,11 +1407,11 @@ worker进程中，ngx_worker_process_cycle()函数就是这个无限循环的处
 
 从nginx的内部来看，一个HTTP Request的处理过程涉及到以下几个阶段。
 
-#) 初始化HTTP Request（读取来自客户端的数据，生成HTTP Request对象，该对象含有该请求所有的信息）。
-#) 处理请求头。
-#) 处理请求体。
-#) 如果有的话，调用与此请求（URL或者Location）关联的handler。
-#) 依次调用各phase handler进行处理。
+- 初始化HTTP Request（读取来自客户端的数据，生成HTTP Request对象，该对象含有该请求所有的信息）。
+- 处理请求头。
+- 处理请求体。
+- 如果有的话，调用与此请求（URL或者Location）关联的handler。
+- 依次调用各phase handler进行处理。
 
 在这里，我们需要了解一下phase handler这个概念。phase字面的意思，就是阶段。所以phase handlers也就好理解了，就是包含若干个处理阶段的一些handler。
 
@@ -1424,10 +1421,10 @@ worker进程中，ngx_worker_process_cycle()函数就是这个无限循环的处
 
 一个phase handler通常执行以下几项任务：
 
-#) 获取location配置。
-#) 产生适当的响应。
-#) 发送response header。
-#) 发送response body。
+- 获取location配置。
+- 产生适当的响应。
+- 发送response header。
+- 发送response body。
 
 
 当nginx读取到一个HTTP Request的header的时候，nginx首先查找与这个请求关联的虚拟主机的配置。如果找到了这个虚拟主机的配置，那么通常情况下，这个HTTP Request将会经过以下几个阶段的处理（phase handlers）：
@@ -1449,21 +1446,20 @@ worker进程中，ngx_worker_process_cycle()函数就是这个无限循环的处
 
 如果一个request对应的location并没有直接有配置的content handler，那么nginx依次尝试:
 
-#) 如果一个location里面有配置  random_index  on，那么随机选择一个文件，发送给客户端。
-#) 如果一个location里面有配置 index指令，那么发送index指令指明的文件，给客户端。
-#) 如果一个location里面有配置 autoindex  on，那么就发送请求地址对应的服务端路径下的文件列表给客户端。
-#) 如果这个request对应的location上有设置gzip_static on，那么就查找是否有对应的.gz文件存在，有的话，就发送这个给客户端（客户端支持gzip的情况下）。
-#) 请求的URI如果对应一个静态文件，static module就发送静态文件的内容到客户端。
+- 如果一个location里面有配置  random_index  on，那么随机选择一个文件，发送给客户端。
+- 如果一个location里面有配置 index指令，那么发送index指令指明的文件，给客户端。
+- 如果一个location里面有配置 autoindex  on，那么就发送请求地址对应的服务端路径下的文件列表给客户端。
+- 如果这个request对应的location上有设置gzip_static on，那么就查找是否有对应的.gz文件存在，有的话，就发送这个给客户端（客户端支持gzip的情况下）。
+- 请求的URI如果对应一个静态文件，static module就发送静态文件的内容到客户端。
 
 内容产生阶段完成以后，生成的输出会被传递到filter模块去进行处理。filter模块也是与location相关的。所有的fiter模块都被组织成一条链。输出会依次穿越所有的filter，直到有一个filter模块的返回值表明已经处理完成。
 
 这里列举几个常见的filter模块，例如：
 
-#) server-side includes。
-#) XSLT filtering。
-#) 图像缩放之类的。
-#) gzip压缩。
-
+- server-side includes。
+- XSLT filtering。
+- 图像缩放之类的。
+- gzip压缩。
 
 在所有的filter中，有几个filter模块需要关注一下。按照调用的顺序依次说明如下：
 
